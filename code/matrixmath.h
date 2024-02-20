@@ -363,7 +363,7 @@ namespace SCATMECH {
 
             void deallocate() {
                 if (owner && p!=NULL) delete[] p;
-                p=0;
+                p=NULL;
                 #ifdef _DEBUG
                 for (int i=0; i<8; ++i) dims[i] = 0;
                 #endif
