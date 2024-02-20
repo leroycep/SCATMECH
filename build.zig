@@ -100,12 +100,39 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(lib);
 
-    const exe = b.addExecutable(.{
+    const brdf_exe = b.addExecutable(.{
         .name = "BRDFProg",
         .target = target,
         .optimize = optimize,
     });
-    exe.addCSourceFile(.{ .file = .{ .path = "code/BRDFProg/BRDFProg.cpp" } });
-    exe.linkLibrary(lib);
-    b.installArtifact(exe);
+    brdf_exe.addCSourceFile(.{ .file = .{ .path = "code/BRDFProg/BRDFProg.cpp" } });
+    brdf_exe.linkLibrary(lib);
+    b.installArtifact(brdf_exe);
+
+    const rcw_exe = b.addExecutable(.{
+        .name = "RCWProg",
+        .target = target,
+        .optimize = optimize,
+    });
+    rcw_exe.addCSourceFile(.{ .file = .{ .path = "code/RCWProg/RCWProg.cpp" } });
+    rcw_exe.linkLibrary(lib);
+    b.installArtifact(rcw_exe);
+
+    const reflect_exe = b.addExecutable(.{
+        .name = "ReflectProg",
+        .target = target,
+        .optimize = optimize,
+    });
+    reflect_exe.addCSourceFile(.{ .file = .{ .path = "code/ReflectProg/ReflectProg.cpp" } });
+    reflect_exe.linkLibrary(lib);
+    b.installArtifact(reflect_exe);
+
+    const mie_exe = b.addExecutable(.{
+        .name = "MieProg",
+        .target = target,
+        .optimize = optimize,
+    });
+    mie_exe.addCSourceFile(.{ .file = .{ .path = "code/MieProg/MieProg.cpp" } });
+    mie_exe.linkLibrary(lib);
+    b.installArtifact(mie_exe);
 }
