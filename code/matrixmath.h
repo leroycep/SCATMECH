@@ -85,30 +85,37 @@ namespace SCATMECH {
 
             //FARRAY(const FARRAY& a) {p = (T*)(a.p); step1 = a.step1; owner=false;}
             FARRAY(int i,int j) {
+                owner = false;
                 p = NULL;
                 allocate(i,j);
             }
             FARRAY(int i,int j,int k) {
+                owner = false;
                 p = NULL;
                 allocate(i,j,k);
             }
             FARRAY(int i,int j,int k,int l) {
+                owner = false;
                 p = NULL;
                 allocate(i,j,k,l);
             }
             FARRAY(int i,int j,int k,int l,int I) {
+                owner = false;
                 p = NULL;
                 allocate(i,j,k,l,I);
             }
             FARRAY(int i,int j,int k,int l,int I,int J) {
+                owner = false;
                 p = NULL;
                 allocate(i,j,k,l,I,J);
             }
             FARRAY(int i,int j,int k,int l,int I,int J,int K) {
+                owner = false;
                 p = NULL;
                 allocate(i,j,k,l,I,J,K);
             }
             FARRAY(int i,int j,int k,int l,int I,int J,int K,int L) {
+                owner = false;
                 p = NULL;
                 allocate(i,j,k,l,I,J,K,L);
             }
