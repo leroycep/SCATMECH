@@ -4,12 +4,20 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
+    const sanitize_flags: []const []const u8 = if (optimize == .Debug) &.{
+        // Add `-fno-santize-trap` so errors will give us more info than just "ILLEGAL INSTRUCTION"
+        // "-fno-sanitize-trap=undefined",
+        // "-fsanitize-minimal-runtime",
+        // "-static-libsan",
+    } else &.{};
+
+    const SCATMECH = b.addStaticLibrary(.{
         .name = "SCATMECH",
         .target = target,
         .optimize = optimize,
     });
-    lib.addCSourceFiles(.{
+    SCATMECH.bundle_compiler_rt = true;
+    SCATMECH.addCSourceFiles(.{
         .files = &.{
             "code/allrough.cpp",
             "code/askuser.cpp",
@@ -90,49 +98,117 @@ pub fn build(b: *std.Build) void {
             "code/zernike.cpp",
             "code/zernikeexpansion.cpp",
         },
+        .flags = sanitize_flags,
     });
-    lib.linkLibCpp();
-    lib.installHeadersDirectoryOptions(.{
+    SCATMECH.linkLibCpp();
+    SCATMECH.installHeadersDirectoryOptions(.{
         .source_dir = .{ .path = "code" },
         .install_dir = .header,
         .install_subdir = "",
         .include_extensions = &.{".h"},
     });
-    b.installArtifact(lib);
+    b.installArtifact(SCATMECH);
+
+    _ = buildPythonModule(b, .{
+        .target = target,
+        .optimize = optimize,
+        .SCATMECH = SCATMECH,
+    });
+
+    buildExamples(b, .{
+        .target = target,
+        .optimize = optimize,
+        .SCATMECH = SCATMECH,
+    });
+}
+
+pub fn buildPythonModule(b: *std.Build, options: struct {
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    SCATMECH: *std.Build.Step.Compile,
+}) *std.Build.Step {
+    const python_module_install_step = b.step("pySCATMECH", "Build python module");
+
+    const sanitize_flags: []const []const u8 = if (options.optimize == .Debug) &.{
+        // Add `-fno-santize-trap` so errors will give us more info than just "ILLEGAL INSTRUCTION"
+        // "-fno-sanitize-trap=undefined",
+        // "-fsanitize-minimal-runtime",
+        // "-static-libsan",
+    } else &.{};
+
+    const SCATPY = b.addSharedLibrary(.{
+        .name = "SCATPY",
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    SCATPY.bundle_compiler_rt = true;
+    SCATPY.addCSourceFile(.{
+        .file = .{ .path = "pySCATMECH/SCATPYmodule.cpp" },
+        .flags = sanitize_flags,
+    });
+    SCATPY.linkLibrary(options.SCATMECH);
+    SCATPY.linkSystemLibrary("python");
+    const SCATPY_install = b.addInstallArtifact(SCATPY, .{
+        .dest_dir = .{ .override = .{ .custom = "site-packages/" } },
+        .dest_sub_path = if (options.target.result.os.tag == .windows) "SCATPY.pyd" else "SCATPY.so",
+    });
+    python_module_install_step.dependOn(&SCATPY_install.step);
+
+    const install_python_source_files = b.addInstallDirectory(.{
+        .source_dir = .{ .path = "./pySCATMECH" },
+        .install_dir = .{ .custom = "site-packages/" },
+        .install_subdir = "pySCATMECH",
+        .include_extensions = &.{".py"},
+    });
+    python_module_install_step.dependOn(&install_python_source_files.step);
+
+    return python_module_install_step;
+}
+
+pub fn buildExamples(b: *std.Build, options: struct {
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    SCATMECH: *std.Build.Step.Compile,
+}) void {
+    const examples = b.step("examples", "Build example programs");
 
     const brdf_exe = b.addExecutable(.{
         .name = "BRDFProg",
-        .target = target,
-        .optimize = optimize,
+        .target = options.target,
+        .optimize = options.optimize,
     });
     brdf_exe.addCSourceFile(.{ .file = .{ .path = "code/BRDFProg/BRDFProg.cpp" } });
-    brdf_exe.linkLibrary(lib);
-    b.installArtifact(brdf_exe);
+    brdf_exe.linkLibrary(options.SCATMECH);
+    const brdf_exe_install = b.addInstallArtifact(brdf_exe, .{});
+    examples.dependOn(&brdf_exe_install.step);
 
     const rcw_exe = b.addExecutable(.{
         .name = "RCWProg",
-        .target = target,
-        .optimize = optimize,
+        .target = options.target,
+        .optimize = options.optimize,
     });
     rcw_exe.addCSourceFile(.{ .file = .{ .path = "code/RCWProg/RCWProg.cpp" } });
-    rcw_exe.linkLibrary(lib);
-    b.installArtifact(rcw_exe);
+    rcw_exe.linkLibrary(options.SCATMECH);
+    const rcw_exe_install = b.addInstallArtifact(rcw_exe, .{});
+    examples.dependOn(&rcw_exe_install.step);
 
     const reflect_exe = b.addExecutable(.{
         .name = "ReflectProg",
-        .target = target,
-        .optimize = optimize,
+        .target = options.target,
+        .optimize = options.optimize,
     });
     reflect_exe.addCSourceFile(.{ .file = .{ .path = "code/ReflectProg/ReflectProg.cpp" } });
-    reflect_exe.linkLibrary(lib);
-    b.installArtifact(reflect_exe);
+    reflect_exe.linkLibrary(options.SCATMECH);
+    const reflect_exe_install = b.addInstallArtifact(reflect_exe, .{});
+    examples.dependOn(&reflect_exe_install.step);
 
     const mie_exe = b.addExecutable(.{
         .name = "MieProg",
-        .target = target,
-        .optimize = optimize,
+        .target = options.target,
+        .optimize = options.optimize,
     });
     mie_exe.addCSourceFile(.{ .file = .{ .path = "code/MieProg/MieProg.cpp" } });
-    mie_exe.linkLibrary(lib);
-    b.installArtifact(mie_exe);
+    mie_exe.linkLibrary(options.SCATMECH);
+    const mie_exe_install = b.addInstallArtifact(mie_exe, .{});
+    examples.dependOn(&mie_exe_install.step);
 }
