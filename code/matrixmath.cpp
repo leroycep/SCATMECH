@@ -12,6 +12,7 @@
 //******************************************************************************
 #include <vector>
 #include <cmath>
+#include <tracy/Tracy.hpp>
 #include "scatmech.h"
 
 #include "matrixmath.h"
@@ -56,6 +57,7 @@ namespace SCATMECH {
               vector<COMPLEX>& Q,
               vector<COMPLEX>& W,int nmat)
     {
+        ZoneScoped;
         //int info;
         //std::vector<double> work(3*nmat);
 
@@ -67,6 +69,7 @@ namespace SCATMECH {
 
     void LUdecompose(std::vector<COMPLEX>& matrix,int nmat,std::vector<int>& pivot)
     {
+        ZoneScoped;
         int info;
         CMLIB::CGEFA(matrix,nmat,nmat,pivot,info);
         if (info!=0) THROW("Singular matrix in LUdecompose");
@@ -74,11 +77,13 @@ namespace SCATMECH {
 
     void LUbacksubstitute(std::vector<COMPLEX>& matrix,int nmat,std::vector<int>& pivot,std::vector<COMPLEX>& b)
     {
+        ZoneScoped;
         CMLIB::CGESL(matrix,nmat,nmat,pivot,b,0);
     }
 
     void LUImprove(vector<COMPLEX>& a, vector<COMPLEX>& alud, int n, vector<int>& indx, vector<COMPLEX>& b, vector<COMPLEX>& x)
     {
+        ZoneScoped;
         vector<COMPLEX> r(n);
 
         for (int i=0; i<n; ++i) {
@@ -92,6 +97,7 @@ namespace SCATMECH {
 
     void Inverse(std::vector<COMPLEX>& matrix, int nmat)
     {
+        ZoneScoped;
         using namespace CMLIB;
 
         CFARRAY work;
@@ -107,6 +113,7 @@ namespace SCATMECH {
     }
 
     int eigen(CFARRAY A, CFARRAY Q, CFARRAY W, int nmat) {
+        ZoneScoped;
         int info;
         DFARRAY work(3*nmat,1);
         CMLIB::CGEEV((double*)&(A[0]),nmat,nmat,(double*)&(Q[0]),(double*)&(W[0]),nmat,work,1,info);
@@ -116,6 +123,7 @@ namespace SCATMECH {
 
     void LUdecompose(CFARRAY matrix,int nmat,IFARRAY pivot)
     {
+        ZoneScoped;
         int info;
         CMLIB::CGEFA(matrix,nmat,nmat,pivot,info);
         if (info!=0) THROW("Singular matrix in LUdecompose");
@@ -123,11 +131,13 @@ namespace SCATMECH {
 
     void LUbacksubstitute(CFARRAY matrix,int nmat,IFARRAY pivot,CFARRAY b)
     {
+        ZoneScoped;
         CMLIB::CGESL(matrix,nmat,nmat,pivot,b,0);
     }
 
     void LUdecompose(DFARRAY matrix,int nmat,IFARRAY pivot)
     {
+        ZoneScoped;
         int info;
         CMLIB::DGEFA(matrix,nmat,nmat,pivot,info);
         if (info!=0) THROW("Singular matrix in LUdecompose");
@@ -135,11 +145,13 @@ namespace SCATMECH {
 
     void LUbacksubstitute(DFARRAY matrix,int nmat,IFARRAY pivot,DFARRAY b)
     {
+        ZoneScoped;
         CMLIB::DGESL(matrix,nmat,nmat,pivot,b,0);
     }
 
     void LUImprove(CFARRAY a, CFARRAY alud, int n, IFARRAY indx, CFARRAY b, CFARRAY x)
     {
+        ZoneScoped;
         CFARRAY r(n,1);
 
         for (int i=1; i<=n; ++i) {
@@ -152,6 +164,7 @@ namespace SCATMECH {
 
     void Inverse(CFARRAY matrix, int nmat)
     {
+        ZoneScoped;
         using namespace CMLIB;
 
         matrix.array(nmat,nmat);
@@ -170,6 +183,7 @@ namespace SCATMECH {
 
     void Inverse(DFARRAY matrix, int nmat)
     {
+        ZoneScoped;
         using namespace CMLIB;
 
         matrix.array(nmat,nmat);

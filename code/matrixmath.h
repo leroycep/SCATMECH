@@ -120,7 +120,7 @@ namespace SCATMECH {
                 allocate(i,j,k,l,I,J,K,L);
             }
 
-            ~FARRAY() {
+            ~FARRAY() noexcept {
                 deallocate();
             }
 
@@ -368,7 +368,7 @@ namespace SCATMECH {
                 owner=true;
             }
 
-            void deallocate() {
+            void deallocate() noexcept {
                 if (owner && p!=NULL) delete[] p;
                 p=NULL;
                 #ifdef _DEBUG

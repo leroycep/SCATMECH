@@ -12,6 +12,8 @@
 //******************************************************************************
 #include "rcw.h"
 #include "matrixmath.h"
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyC.h>
 
 using namespace std;
 
@@ -689,10 +691,13 @@ namespace SCATMECH {
     //***********************************************************************
     void RCW_Model::InPlaneTransmission(bool backward)
     {
+        ZoneScoped;
         int i,j,k;
 
         int nnmat = 2*nmat;
 
+        TracyCZoneN(vector_allocate_zone, "Allocate Vectors", true);
+        
         vector<COMPLEX> epsinvx(2*nmat+1),epsy(2*nmat+1),epsz(2*nmat+1);
         vector<COMPLEX> muinvx(2*nmat+1),muy(2*nmat+1),muz(2*nmat+1);
         vector<COMPLEX> Ex(sqr(nmat)),Ey(sqr(nmat)),Ez(sqr(nmat));
@@ -714,6 +719,8 @@ namespace SCATMECH {
         vector<COMPLEX> fs(nmat*nmat),gs(nmat*nmat),ss(nmat*nmat),ts(nmat*nmat);
         vector<COMPLEX> fp(nmat*nmat),gp(nmat*nmat),sp(nmat*nmat),tp(nmat*nmat);
         double costhetai = backward ? -inckz/k0/real(nII) : -inckz/k0/nI;
+
+        TracyCZoneEnd(vector_allocate_zone);
 
         for (i=0; i<nmat; ++i) {
             for (j=0; j<nmat; ++j) {
@@ -742,6 +749,7 @@ namespace SCATMECH {
 
         forloopint layerloop(0,grating->get_levels()-1,backward ? -1 : +1 );
         for (forloopint::iterator layer = layerloop.begin(); layer!=layerloop.end(); ++layer) {
+        TracyCZoneN(layer_loop_zone, "Layer Loop", true);
 
             string layerstr = format("(layer = %d)",(int)layer);
 
@@ -794,6 +802,7 @@ namespace SCATMECH {
                 Inverse(Mzinv,nmat);
             }
 
+            TracyCZoneN(matrix_build_zone, "Building Matrices", true);
             //
             // Building matrix A...
             //
@@ -838,6 +847,7 @@ namespace SCATMECH {
                     }
                 }
             }
+            TracyCZoneEnd(matrix_build_zone);
 
             //
             // Solving the (S) eigenproblem for this layer...
@@ -848,6 +858,7 @@ namespace SCATMECH {
             //
             // Creating the Q, X, and V matrices for S-pol...
             //
+            TracyCZoneN(qxv_spol_matrices_zone, "Creating Q, X, and V matrices for S-pol", true);
             for (i=0; i<nmat; ++i) {
                 Qs[i] = sqrt(Qs[i]);
                 Xs[i] = exp(-k0*Qs[i]*d);
@@ -861,6 +872,7 @@ namespace SCATMECH {
                     Vs[i+nmat*j] *= Qs[j];
                 }
             }
+            TracyCZoneEnd(qxv_spol_matrices_zone);
 
             //
             // Solving the (P) eigenproblem for this layer...
@@ -871,6 +883,7 @@ namespace SCATMECH {
             //
             // Creating the Q, X, and V matrices for P-pol...
             //
+            TracyCZoneN(qxv_ppol_matrices_zone, "Creating Q, X, and V matrices for P-pol", true);
             for (i=0; i<nmat; ++i) {
                 Qp[i] = sqrt(Qp[i]);
                 Xp[i] = exp(-k0*Qp[i]*d);
@@ -885,11 +898,13 @@ namespace SCATMECH {
                     Vp[i+nmat*j] *= Qp[j];
                 }
             }
+            TracyCZoneEnd(qxv_ppol_matrices_zone);
 
             //
             // Building large matrices...
             //
             message(layerstr + "Creating large matrix");
+            TracyCZoneN(build_large_matrices_zone, "Creating large matrix", true);
             for (i=0; i<nmat; ++i) {
                 for (j=0; j<nmat; ++j) {
                     int ij = i+nmat*j;
@@ -903,6 +918,7 @@ namespace SCATMECH {
                     Fp[i+nmat+nnmat*(j+nmat)] =  Vp[ij];
                 }
             }
+            TracyCZoneEnd(build_large_matrices_zone);
 
             //
             // LU decomposing large matrices...
@@ -913,6 +929,7 @@ namespace SCATMECH {
             LUdecompose(Fp,nnmat,indexp);
 
             message(layerstr + "LU backsubstitution");
+            TracyCZoneN(lu_backsubstitution_zone, "LU backsubstitution", true);
             for (i=0; i<nmat; ++i) {
                 // Do one column at a time (the i-th column)...
                 for (j=0; j<nmat; ++j) {
@@ -947,8 +964,10 @@ namespace SCATMECH {
                     ap_[j+nnmat*i] = WXVXp[j];
                 }
             }
+            TracyCZoneEnd(lu_backsubstitution_zone);
 
             message(layerstr + "Calculating f, g, s, and t matrices");
+            TracyCZoneN(calc_fgst_matrices_zone, "Calculating f, g, s, and t matrices", true);
             for (i=0; i<nmat; ++i) {
                 for (j=0; j<nmat; ++j) {
                     int ij=i+nmat*j;
@@ -973,6 +992,9 @@ namespace SCATMECH {
                     }
                 }
             }
+            TracyCZoneEnd(calc_fgst_matrices_zone);
+
+            TracyCZoneEnd(layer_loop_zone);
         } // ...End of loop on layer
 
         message("Creating final matrices");

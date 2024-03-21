@@ -4,12 +4,14 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const sanitize_flags: []const []const u8 = if (optimize == .Debug) &.{
-        // Add `-fno-santize-trap` so errors will give us more info than just "ILLEGAL INSTRUCTION"
-        // "-fno-sanitize-trap=undefined",
-        // "-fsanitize-minimal-runtime",
-        // "-static-libsan",
-    } else &.{};
+    const enable_tracy = b.option(bool, "tracy", "enable tracy performance profiler integration") orelse false;
+
+    const Tracy = b.dependency("Tracy", .{
+        .target = target,
+        .optimize = optimize,
+        .python = enable_tracy,
+        .enable = enable_tracy,
+    });
 
     const SCATMECH = b.addStaticLibrary(.{
         .name = "SCATMECH",
@@ -98,7 +100,6 @@ pub fn build(b: *std.Build) void {
             "code/zernike.cpp",
             "code/zernikeexpansion.cpp",
         },
-        .flags = sanitize_flags,
     });
     SCATMECH.linkLibCpp();
     SCATMECH.installHeadersDirectoryOptions(.{
@@ -107,6 +108,10 @@ pub fn build(b: *std.Build) void {
         .install_subdir = "",
         .include_extensions = &.{".h"},
     });
+    SCATMECH.linkLibrary(Tracy.artifact("TracyClient"));
+    if (enable_tracy) {
+        SCATMECH.defineCMacro("TRACY_ENABLE", "1");
+    }
     b.installArtifact(SCATMECH);
 
     _ = buildPythonModule(b, .{
@@ -129,22 +134,13 @@ pub fn buildPythonModule(b: *std.Build, options: struct {
 }) *std.Build.Step {
     const python_module_install_step = b.step("pySCATMECH", "Build python module");
 
-    const sanitize_flags: []const []const u8 = if (options.optimize == .Debug) &.{
-        // Add `-fno-santize-trap` so errors will give us more info than just "ILLEGAL INSTRUCTION"
-        // "-fno-sanitize-trap=undefined",
-        // "-fsanitize-minimal-runtime",
-        // "-static-libsan",
-    } else &.{};
-
     const SCATPY = b.addSharedLibrary(.{
         .name = "SCATPY",
         .target = options.target,
         .optimize = options.optimize,
     });
-    SCATPY.bundle_compiler_rt = true;
     SCATPY.addCSourceFile(.{
         .file = .{ .path = "pySCATMECH/SCATPYmodule.cpp" },
-        .flags = sanitize_flags,
     });
     SCATPY.linkLibrary(options.SCATMECH);
     SCATPY.linkSystemLibrary("python");
@@ -154,13 +150,16 @@ pub fn buildPythonModule(b: *std.Build, options: struct {
     });
     python_module_install_step.dependOn(&SCATPY_install.step);
 
-    const install_python_source_files = b.addInstallDirectory(.{
+    // use Zig's ability to install header files to ensure that the python source code is
+    // distributed alongside the dll.
+    const install_python_source = b.addInstallDirectory(.{
         .source_dir = .{ .path = "./pySCATMECH" },
         .install_dir = .{ .custom = "site-packages/" },
         .install_subdir = "pySCATMECH",
         .include_extensions = &.{".py"},
     });
-    python_module_install_step.dependOn(&install_python_source_files.step);
+
+    python_module_install_step.dependOn(&install_python_source.step);
 
     return python_module_install_step;
 }
