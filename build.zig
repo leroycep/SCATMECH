@@ -132,8 +132,6 @@ pub fn buildPythonModule(b: *std.Build, options: struct {
     optimize: std.builtin.OptimizeMode,
     SCATMECH: *std.Build.Step.Compile,
 }) *std.Build.Step {
-    const python_module_install_step = b.step("pySCATMECH", "Build python module");
-
     const SCATPY = b.addSharedLibrary(.{
         .name = "SCATPY",
         .target = options.target,
@@ -148,20 +146,18 @@ pub fn buildPythonModule(b: *std.Build, options: struct {
         .dest_dir = .{ .override = .{ .custom = "site-packages/" } },
         .dest_sub_path = if (options.target.result.os.tag == .windows) "SCATPY.pyd" else "SCATPY.so",
     });
-    python_module_install_step.dependOn(&SCATPY_install.step);
+    b.getInstallStep().dependOn(&SCATPY_install.step);
 
-    // use Zig's ability to install header files to ensure that the python source code is
-    // distributed alongside the dll.
+    // Make SCATPY depend on pySCATMECH
     const install_python_source = b.addInstallDirectory(.{
         .source_dir = .{ .path = "./pySCATMECH" },
         .install_dir = .{ .custom = "site-packages/" },
         .install_subdir = "pySCATMECH",
         .include_extensions = &.{".py"},
     });
+    SCATPY_install.step.dependOn(&install_python_source.step);
 
-    python_module_install_step.dependOn(&install_python_source.step);
-
-    return python_module_install_step;
+    return &SCATPY_install.step;
 }
 
 pub fn buildExamples(b: *std.Build, options: struct {
