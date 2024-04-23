@@ -4,12 +4,13 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const enable_python = b.option(bool, "python", "enable building python module") orelse false;
     const enable_tracy = b.option(bool, "tracy", "enable tracy performance profiler integration") orelse false;
 
     const Tracy = b.dependency("Tracy", .{
         .target = target,
         .optimize = optimize,
-        .python = enable_tracy,
+        .python = enable_python,
         .enable = enable_tracy,
     });
 
@@ -102,10 +103,7 @@ pub fn build(b: *std.Build) void {
         },
     });
     SCATMECH.linkLibCpp();
-    SCATMECH.installHeadersDirectoryOptions(.{
-        .source_dir = .{ .path = "code" },
-        .install_dir = .header,
-        .install_subdir = "",
+    SCATMECH.installHeadersDirectory(.{ .path = "code" }, "", .{
         .include_extensions = &.{".h"},
     });
     SCATMECH.linkLibrary(Tracy.artifact("TracyClient"));
@@ -114,11 +112,13 @@ pub fn build(b: *std.Build) void {
     }
     b.installArtifact(SCATMECH);
 
-    _ = buildPythonModule(b, .{
-        .target = target,
-        .optimize = optimize,
-        .SCATMECH = SCATMECH,
-    });
+    if (enable_python) {
+        _ = buildPythonModule(b, .{
+            .target = target,
+            .optimize = optimize,
+            .SCATMECH = SCATMECH,
+        });
+    }
 
     buildExamples(b, .{
         .target = target,

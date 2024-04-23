@@ -16,8 +16,8 @@
     // internet connectivity.
     .dependencies = .{
         .Tracy = .{
-            .url = "https://github.com/leroycep/tracy/archive/a84d83ea9963ccdcaa7339fbb53aaea23602d4cd.tar.gz",
-            .hash = "122007f4fe7a66cae203c07fbd30fcd5f549596a5fcb586da74e45072505fe7b394b",
+            .url = "https://github.com/leroycep/tracy/archive/9f28198ecb0933e7f90944d435b8179e3b9e14b9.tar.gz",
+            .hash = "1220dc344c231abbc45e1ca0f0bdaadaf7fd77804bedb50f77997bd7d40eb9c7cb58",
         },
     },
 
